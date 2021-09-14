@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/Temi4/CLionProjects/OS/1_lab/main.cpp
+iostream
+-
+unistd.h
+-
+cctype
+-
+algorithm
+-
+

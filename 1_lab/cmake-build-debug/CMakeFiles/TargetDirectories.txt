@@ -1,0 +1,3 @@
+/home/Temi4/CLionProjects/OS/1_lab/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/Temi4/CLionProjects/OS/1_lab/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/Temi4/CLionProjects/OS/1_lab/cmake-build-debug/CMakeFiles/1_lab.dir
