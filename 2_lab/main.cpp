@@ -16,7 +16,7 @@ int main() {
     int pid_2 = 0; // второй поток
     if ((pid_1 = fork()) > 0) { // создаем первый поток
         if ((pid_2 = fork()) > 0) { //создаем второй поток
-            string s; // Parent
+            // Parent
             auto *in = new char[2];
             in[0] = 0;
             char c;
@@ -50,7 +50,7 @@ int main() {
             }
             char *out = (char *) malloc(2 * sizeof(char));
             out[0] = 0;
-            for (int i = 1; i < in[0]; i++) {
+            for (int i = 1; i < in[0]; i++) { // преобразование
                 if (in[i] == ' ' && in[i + 1] == ' ') {
                     i++;
                     continue; //
@@ -72,18 +72,16 @@ int main() {
             exit(-1);
         }
     } else if (pid_1 == 0) { //Child_1
-        fflush(stdin);
-        fflush(stdout);
         char *in = (char *) malloc(sizeof(char));
         read(fd_1[0], &in[0], sizeof(char));
         in = (char *) realloc(in, (in[0] + 2) * sizeof(char));
         char *out = (char *) malloc((in[0] + 2) * sizeof(char));
         out[0] = in[0];
-        for (int i = 1; i < in[0] + 1; i++) {
+        for (int i = 1; i < in[0] + 1; i++) { // преобразование
             read(fd_1[0], &in[i], sizeof(char));
             out[i] = toupper(in[i]);
         }
-        write(fd[1], out, (out[0] + 2) * sizeof(char));
+        write(fd[1], out, (out[0] + 2) * sizeof(char)); // в pipe между дочерними процессами
         close(fd_1[0]);
         close(fd[1]);
         delete in;
