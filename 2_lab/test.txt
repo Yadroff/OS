@@ -1,4 +1,0 @@
-Hello   World!
-I  am    learning OS
-I love C++
-And   you)))
