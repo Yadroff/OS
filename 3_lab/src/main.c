@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <time.h>
 
 int R;
 int *N;
@@ -10,7 +11,8 @@ typedef struct arguments {
 } Arg;
 
 double double_rand(double min, double max) { // return random double from min to max
-    double scale = rand() / (double) RAND_MAX;
+    srand((unsigned int) time(NULL));
+    double scale = (double) rand() / (double) RAND_MAX;
     return min + scale * (max - min);
 }
 
