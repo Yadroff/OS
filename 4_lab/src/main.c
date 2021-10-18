@@ -76,9 +76,6 @@ int main() {
 		perror("SEM_WAIT");
 		exit(EXIT_FAILURE);
 	  }
-	  struct stat statbuf;
-	  fstat(fd, &statbuf);
-	  map_size = statbuf.st_size;
 	  printf("%s\n", memptr);
 	  return EXIT_SUCCESS;
 	}
