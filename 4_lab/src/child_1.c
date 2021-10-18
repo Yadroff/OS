@@ -2,10 +2,8 @@
 // Created by Temi4 on 17.10.2021.
 //
 #include <assert.h>
-#include <ctype.h>
 #include <fcntl.h>
 #include <semaphore.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,5 +61,7 @@ int main(int argc, char **argv) {
   close(map_fd);
   sem_post(semptr);
   sem_close(semptr);
+  free(out);
+  free(string);
   return EXIT_SUCCESS;
 }
