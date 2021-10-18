@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "shrmem.h"
@@ -72,13 +73,13 @@ int main() {
 	}
 	if (val == 0) {
 	  if (sem_wait(semptr) == -1) {
-		perror("SEM_POST");
+		perror("SEM_WAIT");
 		exit(EXIT_FAILURE);
 	  }
-	  char *string = (char *)malloc(strlen(memptr) * sizeof(char));
-	  strcpy(string, memptr);
-	  printf("%s", string);
-	  free(string);
+	  struct stat statbuf;
+	  fstat(fd, &statbuf);
+	  map_size = statbuf.st_size;
+	  printf("%s\n", memptr);
 	  return EXIT_SUCCESS;
 	}
   }
