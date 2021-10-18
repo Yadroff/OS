@@ -9,18 +9,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "shrmem.h"
 
 int main(int argc, char **argv) {
-  assert(argc == 2);
-  const size_t map_size = atoi(argv[1]);
   int map_fd = shm_open(BackingFile, O_RDWR, AccessPerms);
   if (map_fd < 0) {
 	perror("SHM_OPEN");
 	exit(EXIT_FAILURE);
   }
+  struct stat statbuf;
+  fstat(map_fd, &statbuf);
+  const size_t map_size = statbuf.st_size;
   caddr_t memptr = mmap(
 	  NULL,
 	  map_size,
@@ -54,9 +56,7 @@ int main(int argc, char **argv) {
 	munmap(memptr, map_size);
 	close(map_fd);
 	sem_close(semptr);
-	char str[10];
-	sprintf(str, "%lu", map_size);
-	execl("4_lab_child_1", "4_lab_child_1", str, NULL);
+	execl("4_lab_child_1", "4_lab_child_1", NULL);
 	perror("EXECL");
 	exit(EXIT_FAILURE);
   } else if (pid == -1) {

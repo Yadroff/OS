@@ -8,18 +8,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "shrmem.h"
 
 int main(int argc, char **argv) {
-  assert(argc == 2);
-  const size_t map_size = atoi(argv[1]);
   int map_fd = shm_open(BackingFile, O_RDWR, AccessPerms);
   if (map_fd < 0) {
 	perror("SHM_OPEN");
 	exit(EXIT_FAILURE);
   }
+  struct stat statbuf;
+  fstat(map_fd, &statbuf);
+  const size_t map_size = statbuf.st_size;
   caddr_t memptr = mmap(
 	  NULL,
 	  map_size,
@@ -44,24 +46,22 @@ int main(int argc, char **argv) {
   char *out = (char *)calloc(1, sizeof(char));
   size_t m_size = 0;
   strcpy(string, memptr);
-  for (int i = 0; i < map_size; ++i) {// преобразование
+  for (int i = 0; i + 1 < map_size; ++i) {// преобразование
 	if (string[i] == ' ' && string[i + 1] == ' ') {
 	  ++i;
 	  continue;//
 	}
 	out[m_size] = string[i];
-	++m_size;
-	out = (char *)realloc(out, (m_size + 1) * sizeof(out));
+	out = (char *)realloc(out, (++m_size + 1) * sizeof(char));
   }
+  free(string);
   out[m_size] = '\0';
+  ftruncate(map_fd,(off_t) m_size);
   memset(memptr, '\0', m_size);
   sprintf(memptr, "%s", out);
-  out = (char*)calloc(m_size, sizeof(char));
-  strcpy(out, memptr);
+  free(out);
   close(map_fd);
   sem_post(semptr);
   sem_close(semptr);
-  free(out);
-  free(string);
   return EXIT_SUCCESS;
 }

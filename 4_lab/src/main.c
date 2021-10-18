@@ -15,8 +15,7 @@ int main() {
   char c;
   while ((c = getchar()) != EOF) {
 	in[map_size] = c;
-	++map_size;
-	in = (char *)realloc(in, (map_size + 1) * sizeof(char));
+	in = (char *)realloc(in, (++map_size + 1) * sizeof(char));
   }
   in[map_size] = '\0';
   //read string stream
@@ -25,14 +24,14 @@ int main() {
 	perror("OPEN");
 	exit(EXIT_FAILURE);
   }
-  sem_t *semptr = sem_open(SemaphoreName, O_CREAT, AccessPerms, 3);
+  sem_t *semptr = sem_open(SemaphoreName, O_CREAT, AccessPerms, 2);
   if (semptr == SEM_FAILED) {
 	perror("SEM_OPEN");
 	exit(EXIT_FAILURE);
   }
   int val;
 
-  ftruncate(fd, map_size);
+  ftruncate(fd, (off_t)map_size);
   caddr_t memptr = mmap(
 	  NULL,
 	  map_size,
@@ -51,19 +50,19 @@ int main() {
 	perror("SEM_GETVALUE");
 	exit(EXIT_FAILURE);
   }
-  while (val++ < 2) {// if semaphore already was created, just fill it up to 2
+  while (val++ < 2) {
 	sem_post(semptr);
   }
   int pid_0 = 0;
-  int pid_1 = 0;
   if ((pid_0 = fork()) == 0) {
 	munmap(memptr, map_size);
 	close(fd);
 	sem_close(semptr);
-	char str[10];
-	sprintf(str, "%lu", map_size);
-	execl("4_lab_child_0", "4_lab_child_0", str, NULL);
+	execl("4_lab_child_0", "4_lab_child_0", NULL);
 	perror("EXECL");
+	exit(EXIT_FAILURE);
+  } else if (pid_0 < 0) {
+	perror("FORK");
 	exit(EXIT_FAILURE);
   }
   while (true) {
