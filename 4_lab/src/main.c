@@ -18,7 +18,7 @@ int main() {
 	in[map_size] = c;
 	in = (char *)realloc(in, (++map_size + 1) * sizeof(char));
   }
-  in[map_size] = '\0';
+  in[map_size++] = '\0';
   //read string stream
   int fd = shm_open(BackingFile, O_RDWR | O_CREAT, AccessPerms);
   if (fd == -1) {
@@ -76,7 +76,7 @@ int main() {
 		perror("SEM_WAIT");
 		exit(EXIT_FAILURE);
 	  }
-	  printf("%s\n", memptr);
+	  printf("%s", memptr);
 	  return EXIT_SUCCESS;
 	}
   }

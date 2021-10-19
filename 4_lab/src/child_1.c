@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 	out = (char *)realloc(out, (++m_size + 1) * sizeof(char));
   }
   free(string);
-  out[m_size] = '\0';
+  out[m_size++] = '\0';
   ftruncate(map_fd,(off_t) m_size);
   memset(memptr, '\0', m_size);
   sprintf(memptr, "%s", out);
