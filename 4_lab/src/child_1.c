@@ -42,19 +42,16 @@ int main(int argc, char **argv) {
 	perror("SEM_WAIT");
 	exit(EXIT_FAILURE);
   }
-  char *string = (char *)calloc(map_size, sizeof(char));
   char *out = (char *)calloc(1, sizeof(char));
   size_t m_size = 0;
-  strcpy(string, memptr);
   for (int i = 0; i + 1 < map_size; ++i) {// преобразование
-	if (string[i] == ' ' && string[i + 1] == ' ') {
+	if (memptr[i] == ' ' && memptr[i + 1] == ' ') {
 	  ++i;
 	  continue;//
 	}
-	out[m_size] = string[i];
+	out[m_size] = memptr[i];
 	out = (char *)realloc(out, (++m_size + 1) * sizeof(char));
   }
-  free(string);
   out[m_size++] = '\0';
   ftruncate(map_fd,(off_t) m_size);
   memset(memptr, '\0', m_size);

@@ -43,10 +43,9 @@ int main(int argc, char **argv) {
 	perror("SEM_WAIT");
 	exit(EXIT_FAILURE);
   }
-  char *string = (char *)malloc(strlen(memptr) * sizeof(char));
-  strcpy(string, memptr);
+  char *string = (char *)malloc(map_size * sizeof(char));
   for (int i = 0; i < map_size; ++i) {// преобразование
-	string[i] = toupper(string[i]);
+	string[i] = toupper(memptr[i]);
   }
   memset(memptr, '\0', map_size);
   sprintf(memptr, "%s", string);

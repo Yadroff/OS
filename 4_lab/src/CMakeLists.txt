@@ -4,6 +4,7 @@ project(4_lab C)
 set(CMAKE_C_STANDARD 99)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 find_package(Threads REQUIRED)
 
 add_executable(4_lab_child_0 child_0.c shrmem.h)
