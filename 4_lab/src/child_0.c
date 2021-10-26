@@ -1,7 +1,6 @@
 //
 // Created by Temi4 on 17.10.2021.
 //
-#include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <semaphore.h>

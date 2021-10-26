@@ -1,7 +1,6 @@
 //
 // Created by Temi4 on 17.10.2021.
 //
-#include <assert.h>
 #include <fcntl.h>
 #include <semaphore.h>
 #include <stdio.h>
@@ -53,11 +52,12 @@ int main(int argc, char **argv) {
 	out = (char *)realloc(out, (++m_size + 1) * sizeof(char));
   }
   out[m_size++] = '\0';
-  ftruncate(map_fd,(off_t) m_size);
+  ftruncate(map_fd, (off_t)m_size);
   memset(memptr, '\0', m_size);
   sprintf(memptr, "%s", out);
   free(out);
   close(map_fd);
+  usleep(00150000);
   sem_post(semptr);
   sem_close(semptr);
   return EXIT_SUCCESS;

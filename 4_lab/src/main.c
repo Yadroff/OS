@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include "shrmem.h"
@@ -53,6 +52,9 @@ int main() {
   }
   while (val++ < 2) {
 	sem_post(semptr);
+  }
+  while (val-- > 3){
+	sem_wait(semptr);
   }
   int pid_0 = 0;
   if ((pid_0 = fork()) == 0) {
