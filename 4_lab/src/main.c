@@ -72,7 +72,6 @@ int main() {
 	  exit(EXIT_FAILURE);
 	}
 	if (val == 0) {
-	  usleep(00300000);
 	  if (sem_wait(semptr) == -1) {
 		perror("SEM_WAIT");
 		exit(EXIT_FAILURE);
