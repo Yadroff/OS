@@ -1,9 +1,4 @@
-//
-// Created by Temi4 on 21.11.2021.
-//
-
 #include "realization.h"
-
 #include <stdio.h>
 
 int main(){

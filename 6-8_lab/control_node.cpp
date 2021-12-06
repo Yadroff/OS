@@ -1,10 +1,9 @@
-#include <map>
 #include <unistd.h>
 #include <vector>
 #include <zmq.hpp>
 
+#include "my_zmq.h"
 #include "topology.h"
-#include "zmq.h"
 
 using node_id_type = long long;
 
@@ -48,10 +47,62 @@ int main() {
 		}
 		node_token_t *token = new node_token_t({create, parent, id});
 		node_token_t reply({fail, id, id});
-		if (my_zmq::send_receive_wait(token, reply, children[ind].second) and reply.action == success){
-
+		if (my_zmq::send_receive_wait(token, reply, children[ind].second) and reply.action == success) {
+		  control_node.insert(parent, id);
+		} else {
+		  std::cout << "Error: Parent is unavailable" << std::endl;
 		}
 	  }
+	} else if (s == "remove") {
+	  int ind = control_node.find(id);
+	  if (ind != -1) {
+		auto *token = new node_token_t({destroy, id, id});
+		node_token_t reply({fail, id, id});
+		bool ok = my_zmq::send_receive_wait(token, reply, children[ind].second);
+		if (reply.action == destroy and reply.parent_id == id) {
+		  rc = zmq_close(children[ind].second);
+		  assert(rc == 0);
+		  rc = zmq_ctx_term(children[ind].first);
+		  assert(rc == 0);
+		  auto it = children.begin();
+		  while (ind--) {
+			++it;
+		  }
+		  children.erase(it);
+		} else if (reply.action == bind and reply.parent_id == id) {
+		  rc = zmq_close(children[ind].second);
+		  assert(rc == 0);
+		  rc = zmq_ctx_term(children[ind].first);
+		  assert(rc == 0);
+		  my_zmq::init_pair_socket(children[ind].first, children[ind].second);
+		  rc = zmq_bind(children[ind].second, ("tcp://*:" + std::to_string(PORT_BASE + id)).c_str());
+		  assert(rc == 0);
+		}
+		if (ok) {
+		  control_node.erase(id);
+		  std::cout << "OK" << std::endl;
+		} else {
+		  std::cout << "Error: Node is unavailable" << std::endl;
+		}
+	  } else {
+		std::cout << "Error: Not found" << std::endl;
+	  }
+	} else if (s == "ping") {
+	  int ind = control_node.find(id);
+	  if (ind == -1) {
+		std::cout << "Error: Not found" << std::endl;
+		continue;
+	  }
+	  auto *token = new node_token_t({ping, id, id});
+	  node_token_t reply({fail, id, id});
+	  if (my_zmq::send_receive_wait(token, reply, children[ind].second) and reply.action == success) {
+		std::cout << "OK: 1" << std::endl;
+	  } else {
+		std::cout << "OK: 0" << std::endl;
+	  }
+	}
+	else if(s == "exec"){
+
 	}
   }
 }

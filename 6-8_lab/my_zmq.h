@@ -6,7 +6,7 @@
 #include <cerrno>
 #include <cstring>
 #include <string>
-#include <zmq.h>
+#include <zmq.hpp>
 
 enum actions_t {
   fail = 0,
@@ -112,9 +112,9 @@ bool send_msg_wait(T *token, void *socket) {
 }
 /* send_msg && receive_msg */
 template<typename T>
-bool send_receive_wait(T* token_send, T &token_reply, void* socket){
-  if (send_msg_wait(token_send, socket)){
-	if (receive_msg_wait(token_reply, socket)){
+bool send_receive_wait(T *token_send, T &token_reply, void *socket) {
+  if (send_msg_wait(token_send, socket)) {
+	if (receive_msg_wait(token_reply, socket)) {
 	  return true;
 	}
   }

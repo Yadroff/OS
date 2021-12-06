@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
   sprintf(memptr, "%s", out);
   free(out);
   close(map_fd);
-  usleep(00150000);
+  usleep(00150000); // one iteration of cycle while (true) at main.c may be longer than this program
   sem_post(semptr);
   sem_close(semptr);
   return EXIT_SUCCESS;

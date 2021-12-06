@@ -1,7 +1,3 @@
-//
-// Created by Temi4 on 21.11.2021.
-//
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
