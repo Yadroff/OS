@@ -1,0 +1,4 @@
+/home/Temi4/CLionProjects/OS/6-8_lab/src/CMakeFiles/control.dir
+/home/Temi4/CLionProjects/OS/6-8_lab/src/CMakeFiles/calculation_node.dir
+/home/Temi4/CLionProjects/OS/6-8_lab/src/CMakeFiles/edit_cache.dir
+/home/Temi4/CLionProjects/OS/6-8_lab/src/CMakeFiles/rebuild_cache.dir
