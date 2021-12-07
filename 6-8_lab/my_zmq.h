@@ -15,14 +15,14 @@ enum actions_t {
   destroy = 3,
   bind = 4,
   ping = 5,
-  exec = 6
+  exec_check = 6,
+  exec_add = 7
 };
 
 const char *NODE_EXECUTABLE_NAME = "calculation_node";
-const char SENTINEL = '$';
 const int PORT_BASE = 8000;
 const int WAIT_TIME = 1000;
-
+const char SENTINEL = '$';
 struct node_token_t {
   actions_t action;
   long long parent_id, id;
@@ -32,8 +32,10 @@ namespace my_zmq {
 void init_pair_socket(void *&context, void *&socket) {
   int rc;
   context = zmq_ctx_new();
-  socket = zmq_socket(socket, ZMQ_PAIR);
-  rc = zmq_setsockopt(socket, ZMQ_RCVTIMEO | ZMQ_SNDTIMEO, &WAIT_TIME, sizeof(int));
+  socket = zmq_socket(context, ZMQ_PAIR);
+  rc = zmq_setsockopt(socket, ZMQ_RCVTIMEO, &WAIT_TIME, sizeof(int));
+  assert(rc == 0);
+  rc = zmq_setsockopt(socket, ZMQ_SNDTIMEO, &WAIT_TIME, sizeof(int));
   assert(rc == 0);
 }
 template<typename T>
