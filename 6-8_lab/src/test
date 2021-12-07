@@ -1,3 +1,0 @@
-create 10 -1
-ping 10
-exec 10 abc
