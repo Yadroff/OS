@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/calculation_node.dir/calculation_node.cpp.o -o calculation_node  -lzmq 
