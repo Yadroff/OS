@@ -1,3 +1,0 @@
-ToolSet: 1.0 (local)Options: 
-
-Options:-DCMAKE_MAKE_PROGRAM=/home/Temi4/clion-2020.3/bin/ninja/linux/ninja
