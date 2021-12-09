@@ -7,6 +7,44 @@
 
 using node_id_type = long long;
 
+void delete_control_node(node_id_type id, topology_t<node_id_type> &control_node, std::vector<std::pair<void *, void *>> children) {
+  int ind = control_node.find(id);
+  int rc;
+  bool ok;
+  if (ind != -1) {
+	auto *token = new node_token_t({destroy, id, id});
+	node_token_t reply({fail, id, id});
+	ok = my_zmq::send_receive_wait(token, reply, children[ind].second);
+	if (reply.action == destroy and reply.parent_id == id) {
+	  rc = zmq_close(children[ind].second);
+	  assert(rc == 0);
+	  rc = zmq_ctx_destroy(children[ind].first);
+	  assert(rc == 0);
+	  auto it = children.begin();
+	  while (ind--) {
+		++it;
+	  }
+	  children.erase(it);
+	} else if (reply.action == bind and reply.parent_id == id) {
+	  rc = zmq_close(children[ind].second);
+	  assert(rc == 0);
+	  rc = zmq_ctx_term(children[ind].first);
+	  assert(rc == 0);
+	  my_zmq::init_pair_socket(children[ind].first, children[ind].second);
+	  rc = zmq_bind(children[ind].second, ("tcp://*:" + std::to_string(PORT_BASE + id)).c_str());
+	  assert(rc == 0);
+	}
+	if (ok) {
+	  control_node.erase(id);
+	  std::cout << "OK: " << id << std::endl;
+	} else {
+	  std::cout << "Error: Node " << id << " is unavailable" << std::endl;
+	}
+  } else {
+	std::cout << "Error: Not found" << std::endl;
+  }
+}
+
 int main() {
   int rc;
   bool ok;
@@ -14,6 +52,13 @@ int main() {
   std::vector<std::pair<void *, void *>> children;// [context, socket]
   std::string s;
   node_id_type id;
+  std::cout << "\t\tUsage" << std::endl;
+  std::cout << "Create id parent: create calculation node (use parent = -1 if parent is control node)" << std::endl;
+  std::cout << "Ping id: ping calculation node with id $id" << std::endl;
+  std::cout << "Remove id: delete calculation node with id $id" << std::endl;
+  std::cout << "Exec id key val: add [key, val] add local dictionary" << std::endl;
+  std::cout << "Exec id key: check local dictionary" << std::endl;
+  std::cout << "Print 0: print topology" << std::endl;
   while (std::cin >> s >> id) {
 	if (s == "create") {
 	  node_id_type parent_id;
@@ -40,7 +85,7 @@ int main() {
 		  } else {
 			rc = zmq_close(new_socket);
 			assert(rc == 0);
-			rc = zmq_ctx_term(new_context);
+			rc = zmq_ctx_destroy(new_context);
 			assert(rc == 0);
 		  }
 		}
@@ -61,39 +106,7 @@ int main() {
 		}
 	  }
 	} else if (s == "remove") {
-	  int ind = control_node.find(id);
-	  if (ind != -1) {
-		auto *token = new node_token_t({destroy, id, id});
-		node_token_t reply({fail, id, id});
-		ok = my_zmq::send_receive_wait(token, reply, children[ind].second);
-		if (reply.action == destroy and reply.parent_id == id) {
-		  rc = zmq_close(children[ind].second);
-		  assert(rc == 0);
-		  rc = zmq_ctx_term(children[ind].first);
-		  assert(rc == 0);
-		  auto it = children.begin();
-		  while (ind--) {
-			++it;
-		  }
-		  children.erase(it);
-		} else if (reply.action == bind and reply.parent_id == id) {
-		  rc = zmq_close(children[ind].second);
-		  assert(rc == 0);
-		  rc = zmq_ctx_term(children[ind].first);
-		  assert(rc == 0);
-		  my_zmq::init_pair_socket(children[ind].first, children[ind].second);
-		  rc = zmq_bind(children[ind].second, ("tcp://*:" + std::to_string(PORT_BASE + id)).c_str());
-		  assert(rc == 0);
-		}
-		if (ok) {
-		  control_node.erase(id);
-		  std::cout << "OK" << std::endl;
-		} else {
-		  std::cout << "Error: Node is unavailable" << std::endl;
-		}
-	  } else {
-		std::cout << "Error: Not found" << std::endl;
-	  }
+	  delete_control_node(id, control_node, children);
 	} else if (s == "ping") {
 	  int ind = control_node.find(id);
 	  if (ind == -1) {
@@ -114,7 +127,7 @@ int main() {
 	  int val = -1;
 	  bool add = false;
 	  std::cin >> key;
-	  if ((c = getchar()) == ' '){
+	  if ((c = getchar()) == ' ') {
 		add = true;
 		std::cin >> val;
 	  }
@@ -151,16 +164,29 @@ int main() {
 		  }
 		}
 	  }
-	  if (!ok){
+	  if (!ok) {
 		std::cout << "Error: Node is unavailable" << std::endl;
 	  }
+	} else if (s == "print") {
+	  std::cout << control_node;
+	}
+  }
+  std::cout << control_node;
+  for (auto i: control_node.container) {
+	for (size_t size = i.size(); size > 1; --size) {
+	  node_id_type last = i.back();
+	  delete_control_node(last, control_node, children);
+	  i.pop_back();
 	}
   }
 
-  for (auto [context, socket]: children) {
-	rc = zmq_close(socket);
-	assert(rc == 0);
-	rc = zmq_ctx_term(context);
-	assert(rc == 0);
+  std::vector<node_id_type> after_root;
+  for (auto i: control_node.container) {
+	after_root.push_back(i.back());
   }
+
+  for (auto i: after_root) {
+	delete_control_node(i, control_node, children);
+  }
+  return 0;
 }

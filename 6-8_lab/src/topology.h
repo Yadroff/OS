@@ -5,19 +5,15 @@
 #include <list>
 #include <map>
 
-using node_id_type = long long;
-
 template<typename T>
 class topology_t {
- private:
+ public:
   using list_type = std::list<std::list<T>>;
   using iterator = typename std::list<T>::iterator;
   using list_iterator = typename list_type::iterator;
 
   list_type container;
   size_t container_size;
-
- public:
   topology_t() : container(), container_size(0){};
   ~topology_t() = default;
 

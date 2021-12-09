@@ -7,6 +7,7 @@
 #include <cstring>
 #include <string>
 #include <zmq.hpp>
+#include <random>
 
 enum actions_t {
   fail = 0,

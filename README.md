@@ -1,2 +1,2 @@
 # OS
-It's my Operation Systems labs
+It's my Operating Systems labs
