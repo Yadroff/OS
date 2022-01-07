@@ -3,7 +3,6 @@
 
 #include <valarray>
 #include <string>
-#include <iostream>
 #include <vector>
 #include <unistd.h>
 
@@ -63,6 +62,7 @@ std::string receive(int fd) {
 
 void receive_from_client(int fd, std::string *login, std::string *cmd, std::string *data) {
     size_t size;
+    *login = *cmd = *data = "";
     read(fd, &size, sizeof(size));
     int k = 0;
     char c;

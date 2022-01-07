@@ -42,6 +42,7 @@ void add_results(const std::string &game_name, const std::string &game_word, con
         out << game_name << "\t\t" << game_word << "\t\t" << winner << std::endl;
         out.close();
     }
+    std::cout << "RESULTS UPDATED" << std::endl;
 }
 
 bool check_in_data_base(std::pair<std::string, std::string> &login_password) {
@@ -171,20 +172,26 @@ void game_func(const std::string &game_name, const std::string &game_word) {
                 game_respond = "You won the game";
                 send_to_client(players_fd[login], game_respond);
                 add_results(game_name, game_word, login);
-                game_respond = "Game is over. Winner is " + login + " . Game word is " + game_word + ".";
+                game_respond = "Game is over. Winner is " + login + ". Game word is " + game_word + ".";
+                std::string annoy = "Please leave from the table. Use command \"leave\".";
                 for (const auto &it: players_fd) {
+                    game_respond += annoy;
                     send_to_client(it.second, game_respond);
-                    do {
-                        std::string annoy = "Please leave the table (Use command \"leave\")";
-                        send_to_client(it.second, annoy);
+                }
+                for (const auto &it:players_fd){
+                    while (true){
                         receive_from_client(fd, &login, &cmd, &data);
-                    } while (cmd != "leave");
-                    std::cout << "CLIENT " << it.first << "LEFT FROM THE TABLE" << std::endl;
-                    players_fd.erase(it.first);
+                        if (cmd == "leave"){
+                            std::cout << "PLAYER " << login << " LEFT THE TABLE " << game_name << std::endl;
+                            break;
+                        } else{
+                            send_to_client(it.second, annoy);
+                        }
+                    }
                 }
                 close(fd);
                 std::cout << "FINISH GAME: " << game_name << std::endl;
-                int mainFD = open("main_input", O_RDWR);
+                int mainFD = open(SERVER_INPUT_FILE_NAME, O_RDWR);
                 game_respond = "finish";
                 login = game_name;
                 send_to_server(mainFD, login, game_respond, data);
@@ -195,7 +202,7 @@ void game_func(const std::string &game_name, const std::string &game_word) {
             }
         } else if (cmd == "leave") {
             players_fd.erase(login);
-            std::cout << "CLIENT " << login << " LEFT FROM THE TABLE" << std::endl;
+            std::cout << "CLIENT " << login << " LEFT FROM THE TABLE " << game_name << std::endl;
         }
     }
 }
@@ -228,9 +235,7 @@ int main() {
             }
         } else if (cmd == "create") {
             game_name = game_word = "";
-            std::cout << data << std::endl;
             parse_game_word(data, game_name, game_word);
-            std::cout << game_name << std::endl;
             games_names.emplace_back("game_" + game_name);
             games_threads.emplace_back(std::thread(game_func, game_name, game_word));
         } else if (cmd == "quit") {

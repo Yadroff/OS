@@ -4,7 +4,7 @@
 #include <thread>
 
 inline void intro() {
-    std::cout << "\t\t\tHello! Welcome to the game \"Bulls and cows\"." << std::endl;
+    std::cout << "Hello! Welcome to the game \"Bulls and cows\"." << std::endl;
     std::cout << "Have you already account in this game?\n Answer: \"yes\" or \"no\"" << std::endl;
     std::cout << "> ";
     std::cout.flush();

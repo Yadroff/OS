@@ -1,4 +1,3 @@
-
 #ifndef INC_6_8_LAB__ZMQ_H_
 #define INC_6_8_LAB__ZMQ_H_
 
@@ -6,7 +5,7 @@
 #include <cerrno>
 #include <cstring>
 #include <string>
-#include <zmq.hpp>
+#include <zmq.h>
 #include <random>
 
 enum actions_t {
