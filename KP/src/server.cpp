@@ -1,237 +1,257 @@
+#include "functions.h"
 #include <iostream>
-#include <cstdlib>
+#include <fstream>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <string>
-#include <vector>
-#include <fcntl.h>
+#include <map>
 #include <thread>
-#include "funcs.hpp"
 
-#define CLIENT_ID(name) in(logins,name)
-#define PLAYER_ID(name) in(curr_playrs_name, name)
-
-inline int create_game_pipe(std::string game_name) {
-    if (mkfifo(("game_%" + game_name).c_str(), S_IRWXU | S_IRWXG | S_IRWXO) == -1) {
-        std::cout << "GAME " << ("game_%" + game_name).c_str() << " FIFO WAS NOT CREATED";
-        exit(1);
+void check_data_base() {
+    std::ifstream file(DATA_BASE_FILE_NAME);
+    file.open(DATA_BASE_FILE_NAME);
+    if (file.is_open()) {
+        std::cout << "OK: DATA BASE" << std::endl;
+        file.close();
+    } else {
+        std::ofstream f(DATA_BASE_FILE_NAME);
+        std::string empty_string;
+        auto pair = std::make_pair(empty_string, SECRET_KEY + ADMIN_PASSWORD);
+        std::string pass = std::to_string(transform(pair).second);
+        pair.first = ADMIN_NAME;
+        pair.second = pass;
+        auto log_pas = transform(pair);
+        f << log_pas.first << " " << log_pas.second << std::endl;
+        f.close();
+        std::cout << "OK: DATA BASE" << std::endl;
     }
-    int game_input_fd = open(("game_%" + game_name).c_str(), O_RDWR);
-    if (game_input_fd == -1) {
-        std::cout << "MAIN INPUT FIFO WAS NOT OPENED";
-        exit(1);
-    }
-    return game_input_fd;
 }
 
-inline int in(std::vector<std::string> logins, std::string str) {
-    for (int i = 0; i < logins.size(); ++i) {
-        if (logins[i] == str)
-            return i;
+void add_results(const std::string &game_name, const std::string &game_word, const std::string &winner) {
+    std::ifstream inp;
+    std::ofstream out;
+    inp.open(RESULTS_FILE_NAME);
+    if (inp.is_open()){
+        inp.close();
+        out.open(RESULTS_FILE_NAME, std::ios::app);
+        out << game_name << "\t\t" << game_word << "\t\t" << winner << std::endl;
+        out.close();
+    } else{
+        out.open(RESULTS_FILE_NAME);
+        out << "Game name\t\tGame word\t\tWinner" << std::endl;
+        out << game_name << "\t\t" << game_word << "\t\t" << winner << std::endl;
+        out.close();
     }
-    return -1;
 }
 
-inline int create_main_pipe() {
-    if (mkfifo("main_input", S_IRWXU | S_IRWXG | S_IRWXO) == -1) {
-        std::cout << "MAIN INPUT FIFO WAS NOT CREATED";
-        exit(1);
+bool check_in_data_base(std::pair<std::string, std::string> &login_password) {
+    std::pair<int, int> pair = transform(login_password);
+    std::ifstream file;
+    file.open(DATA_BASE_FILE_NAME);
+    int log, pas;
+    while (file >> log >> pas) {
+        if (log == pair.first) {
+            if (pas == pair.second) {
+                file.close();
+                return true;
+            }
+            file.close();
+            return false;
+        }
     }
-    int fd_recv = open("main_input", O_RDWR);
-    if (fd_recv == -1) {
-        std::cout << "MAIN INPUT FIFO WAS NOT OPENED";
-        exit(1);
-    }
-    return fd_recv;
+    file.close();
+    return false;
 }
 
-inline int create_admin_pipe() {
-    if (mkfifo("admin", S_IRWXU | S_IRWXG | S_IRWXO) == -1) {
-        std::cout << "ADMIN INPUT FIFO WAS NOT CREATED";
-        exit(1);
+bool add_in_data_base(std::pair<std::string, std::string> &login_password) {
+    std::pair<int, int> pair = transform(login_password);
+    std::ifstream file;
+    file.open(DATA_BASE_FILE_NAME, std::ios::in);
+    int log, pas;
+    while (file >> log >> pas) {
+        if (log == pair.first) {
+            file.close();
+            return false;
+        }
     }
-    int admin_fd = open("admin", O_RDWR);
-    if (admin_fd == -1) {
-        std::cout << "ADMIN INPUT FIFO WAS NOT OPENED";
-        exit(1);
-    }
-    return admin_fd;
+    file.close();
+    std::ofstream f(DATA_BASE_FILE_NAME, std::ios::app);
+    f << pair.first << " " << pair.second << std::endl;
+    f.close();
+    return true;
 }
 
-inline int create_client_pipe(std::string rcvd_name) {
-    if (mkfifo(rcvd_name.c_str(), S_IRWXU | S_IRWXG | S_IRWXO) == -1) {
-        std::cout << "CLIENT INPUT FIFO WAS NOT CREATED";
-        exit(1);
+int create_main_pipe() {
+    if (mkfifo(SERVER_INPUT_FILE_NAME, ACCESS_PERMS) == -1) {
+        perror("Mkfifo");
+        exit(EXIT_FAILURE);
     }
-    int fd = open(rcvd_name.c_str(), O_RDWR);
+    int fd = open(SERVER_INPUT_FILE_NAME, O_RDWR);
     if (fd == -1) {
-        std::cout << "CLIENT INPUT FIFO WAS NOT OPENED";
-        exit(1);
+        perror("Open file");
+        exit(EXIT_FAILURE);
     }
     return fd;
 }
 
-int hit_check(std::string game_word, std::string try_word, int *cows, int *bulls) {
-    if (try_word.size() != game_word.size())
+int create_client_pipe(std::string &login) {
+    if (mkfifo(login.c_str(), ACCESS_PERMS) == -1) {
+        perror("Mkfifo");
+        exit(EXIT_FAILURE);
+    }
+    int fd = open(login.c_str(), O_RDWR);
+    if (fd == -1) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+    return fd;
+}
+
+int create_game_pipe(const std::string &game_name) {
+    if (mkfifo(("game_" + game_name).c_str(), ACCESS_PERMS) == -1) {
+        perror("mkfifo");
+        exit(EXIT_FAILURE);
+    }
+    int fd = open(("game_" + game_name).c_str(), O_RDWR);
+    if (fd == -1) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+    return fd;
+}
+
+int check(const std::string &game_word, const std::string &try_word, int &cows, int &bulls) {
+    bulls = 0;
+    cows = 0;
+    if (try_word.size() != game_word.size()) {
         return -1;
-    if (try_word == game_word)
-        return -2;
-
-    *cows = 0;
-    *bulls = 0;
-
-    for (size_t i = 0; i < try_word.size(); ++i)
-        for (size_t j = 0; j < game_word.size(); ++j)
-            if (try_word[i] == game_word[j])
-                *cows = *cows + 1;
-    for (size_t i = 0; i < try_word.size(); ++i)
-        if (try_word[i] == game_word[i])
-            *bulls = *bulls + 1;
+    }
+    if (try_word == game_word) {
+        return 1;
+    }
+    size_t size = game_word.size();
+    for (size_t i = 0; i < size; ++i) {
+        for (size_t j = 0; j < size; ++j) {
+            if (game_word[i] == try_word[j]) {
+                if (i == j) {
+                    ++bulls;
+                } else {
+                    ++cows;
+                }
+            }
+        }
+    }
     return 0;
 }
 
-void game_funk(std::string game_name, std::string game_word) {
-    std::vector<std::string> curr_playrs_name;
-    std::vector<int> curr_playrs_fd;
-    auto iter_fd = curr_playrs_fd.cbegin();
-    auto iter_log = curr_playrs_name.cbegin();
-    int game_input_fd = create_game_pipe(game_name);
+void game_func(const std::string &game_name, const std::string &game_word) {
+    std::map<std::string, int> players_fd;
+    int fd = create_game_pipe(game_name);
     int cows, bulls;
     std::string game_respond;
     int game_status;
 
     std::cout << "START GAME: " << game_name << std::endl;
-    std::cout.flush();
-
-    std::string rcvd_name, rcvd_command, rcvd_data;
-    while (1) {
-        recieve_message_server(game_input_fd, &rcvd_name, &rcvd_command, &rcvd_data);
-        if (rcvd_command == "connect") {
-            curr_playrs_name.push_back(rcvd_name);
-            curr_playrs_fd.push_back(open(rcvd_name.c_str(), O_RDWR));
-
-            std::cout << "CLIENT: " << rcvd_name << " JOIN GAME: " << game_name << std::endl;
-            std::cout.flush();
-
-            game_respond = "Добро пожаловать за стол " + game_name;
-            send_message_to_client(curr_playrs_fd[PLAYER_ID(rcvd_name)], game_respond);
-            game_respond = "Делайте свои предполодения с помощью команды maybe @слово@";
-            send_message_to_client(curr_playrs_fd[PLAYER_ID(rcvd_name)], game_respond);
-        } else if (rcvd_command == "maybe") {
-            game_status = hit_check(game_word, rcvd_data, &cows, &bulls);
-
+    std::string login, cmd, data;
+    while (true) {
+        login = cmd = data = "";
+        receive_from_client(fd, &login, &cmd, &data);
+        if (cmd == "connect") {
+            players_fd[login] = open(login.c_str(), O_RDWR);
+            std::cout << "CLIENT " << login << " JOINED THE GAME: " << game_name << std::endl;
+            game_respond =
+                    "Welcome to the game " + game_name + "\n" + "Make your guesses with the command \"maybe $word\"";
+            send_to_client(players_fd[login], game_respond);
+        } else if (cmd == "maybe") {
+            game_status = check(game_word, data, cows, bulls);
             if (game_status == -1) {
-                game_respond = "Размеры слов не совподают";
-                send_message_to_client(curr_playrs_fd[PLAYER_ID(rcvd_name)], game_respond);
-            } else if (game_status == -2) {
-                game_respond = "Вы выйграли";
-                send_message_to_client(curr_playrs_fd[PLAYER_ID(rcvd_name)], game_respond);
-
-                for (int i = 0; i < curr_playrs_name.size(); i++) {
-                    game_respond = "Игру выиграл: " + rcvd_name + "\nЗагаданное слово: " + game_word;
-                    send_message_to_client(curr_playrs_fd[i], game_respond.c_str());
+                game_respond = "Wrong string size";
+                send_to_client(players_fd[login], game_respond);
+            } else if (game_status == 1) {
+                game_respond = "You won the game";
+                send_to_client(players_fd[login], game_respond);
+                add_results(game_name, game_word, login);
+                game_respond = "Game is over. Winner is " + login + " . Game word is " + game_word + ".";
+                for (const auto &it: players_fd) {
+                    send_to_client(it.second, game_respond);
                     do {
-                        game_respond = "Выйдите из-за стола (команда leave)";
-                        send_message_to_client(curr_playrs_fd[i], game_respond.c_str());
-                        recieve_message_server(game_input_fd, &rcvd_name, &rcvd_command, &rcvd_data);
-                    } while (rcvd_command != "leave");
+                        std::string annoy = "Please leave the table (Use command \"leave\")";
+                        send_to_client(it.second, annoy);
+                        receive_from_client(fd, &login, &cmd, &data);
+                    } while (cmd != "leave");
+                    std::cout << "CLIENT " << it.first << "LEFT FROM THE TABLE" << std::endl;
+                    players_fd.erase(it.first);
                 }
-
-                close(game_input_fd);
-
-                std::cout << "TEST" << std::endl;
-
+                close(fd);
                 std::cout << "FINISH GAME: " << game_name << std::endl;
                 int mainFD = open("main_input", O_RDWR);
                 game_respond = "finish";
-                send_message_to_server(mainFD, game_name, game_respond, "");
-                std::cout << "TEST" << std::endl;
+                login = game_name;
+                send_to_server(mainFD, login, game_respond, data);
                 return;
-            } else if (game_status == 0) {
-                game_respond = "Коровы: " + std::to_string(cows) + " Быки: " + std::to_string(bulls);
-                send_message_to_client(curr_playrs_fd[PLAYER_ID(rcvd_name)], game_respond);
+            } else {
+                game_respond = "Bulls: " + std::to_string(bulls) + " Cows: " + std::to_string(cows);
+                send_to_client(players_fd[login], game_respond);
             }
-        } else if (rcvd_command == "leave") {
-            iter_fd = curr_playrs_fd.cbegin();
-            curr_playrs_fd.erase(iter_fd + PLAYER_ID(rcvd_name));
-            iter_log = curr_playrs_name.cbegin();
-            curr_playrs_name.erase(iter_log + PLAYER_ID(rcvd_name));
-            std::cout << "CLIENT: " << rcvd_name << " LEFT GAME: " << game_name << std::endl;
+        } else if (cmd == "leave") {
+            players_fd.erase(login);
+            std::cout << "CLIENT " << login << " LEFT FROM THE TABLE" << std::endl;
         }
     }
 }
 
+
 int main() {
-    std::vector<std::string> logins;
-    std::vector<int> client_pipe_fd;
+    int fd_rec = create_main_pipe();
+    std::map<std::string, int> logins_fds;
     std::vector<std::thread> games_threads;
-    std::vector<std::string> games_name;
-    std::string game_name_table, game_word;
-
-    int fd_recv = create_main_pipe();
-    int admin_fd = create_admin_pipe();
-
-    std::string login;
-    std::string rcvd_name, rcvd_command, rcvd_data;
-    auto iter_fd = client_pipe_fd.cbegin();
-    auto iter_log = logins.cbegin();
-    auto iter_game_thread = games_threads.cbegin();
-    auto iter_game_name = games_name.cbegin();
-    while (1) {
-        recieve_message_server(fd_recv, &rcvd_name, &rcvd_command, &rcvd_data);
-
-        if (rcvd_command == "login" && rcvd_name != "admin") {
-            std::cout << "New client: " << rcvd_name << std::endl;
-            client_pipe_fd.push_back(create_client_pipe(rcvd_name));
-            logins.push_back(rcvd_name);
-        } else if (rcvd_command == "create") {
-            extract_game_data(rcvd_data, &game_name_table, &game_word);
-            games_name.push_back(game_name_table);
-            games_threads.emplace_back(game_funk, game_name_table, game_word);
-        } else if (rcvd_command == "finish") {
-            std::remove(("game_%" + rcvd_name).c_str());
-            std::cout << "TEST\n";
-            std::cout.flush();
-            games_threads[in(games_name, rcvd_name)].detach();
-            std::cout << "TEST\n";
-            std::cout.flush();
-            iter_game_thread = games_threads.cbegin();
-            games_threads.erase(iter_game_thread + in(games_name, rcvd_name));
-            std::cout << "TEST\n";
-            std::cout.flush();
-            iter_game_name = games_name.cbegin();
-            games_name.erase(iter_game_name + in(games_name, rcvd_name));
-            std::cout << "TEST\n";
-            std::cout.flush();
-
-        } else if (rcvd_command == "quit") {
-            close(client_pipe_fd[CLIENT_ID(rcvd_name)]);
-            std::remove(rcvd_name.c_str());
-
-            iter_fd = client_pipe_fd.cbegin();
-            iter_log = logins.cbegin();
-
-            client_pipe_fd.erase(iter_fd + CLIENT_ID(rcvd_name));
-            logins.erase(iter_log + CLIENT_ID(rcvd_name));
-            std::cout << "CLIENT: " << rcvd_name << " LEFT\n";
-
-        } else if (rcvd_command == "shut_down" && rcvd_name == "admin") {
-            for (int i = 0; i < logins.size(); i++) {
-                send_message_to_client(client_pipe_fd[i], "SERVER CLOSED");
-                close(client_pipe_fd[i]);
-                std::remove(logins[i].c_str());
+    std::vector<std::string> games_names;
+    std::string game_name, game_word;
+    std::string login, cmd, data;
+    check_data_base();
+    while (true) {
+        login = cmd = data = "";
+        receive_from_client(fd_rec, &login, &cmd, &data);
+        if (cmd == "log") {
+            std::string password = data;
+            std::pair<std::string, std::string> pair = std::make_pair(login, password);
+            if (check_in_data_base(pair)) {
+                std::cout << "NEW CLIENT: " << login << std::endl;
+                logins_fds[login] = create_client_pipe(login);
             }
-            for (int i = 0; i < games_threads.size(); i++) {
-                std::remove(games_name[i].c_str());
+        } else if (cmd == "reg") {
+            std::string password = data;
+            std::pair<std::string, std::string> pair = std::make_pair(login, password);
+            if (add_in_data_base(pair)) {
+                std::cout << "NEW USER: " << login << std::endl;
+                logins_fds[login] = create_client_pipe(login);
+            }
+        } else if (cmd == "create") {
+            game_name = game_word = "";
+            std::cout << data << std::endl;
+            parse_game_word(data, game_name, game_word);
+            std::cout << game_name << std::endl;
+            games_names.emplace_back("game_" + game_name);
+            games_threads.emplace_back(std::thread(game_func, game_name, game_word));
+        } else if (cmd == "quit") {
+            close(logins_fds[login]);
+            std::remove(login.c_str());
+            logins_fds.erase(login);
+            std::cout << "CLIENT " << login << " LEFT THE GAME" << std::endl;
+        } else if (cmd == "shut_down" and login == ADMIN_NAME) {
+            std::string message = "SERVER CLOSED";
+            for (auto &it: logins_fds) {
+                send_to_client(it.second, message);
+                close(it.second);
+                remove(it.first.c_str());
+            }
+            for (size_t i = 0; i < games_threads.size(); ++i) {
+                std::remove(games_names[i].c_str());
                 games_threads[i].detach();
             }
-
-            close(admin_fd);
-            std::remove("admin");
-            std::remove("main_input");
-            std::cout << "SERVER OFF\n";
-
-            return 0;
+            std::remove(SERVER_INPUT_FILE_NAME);
+            std::cout << "SERVER OFF" << std::endl;
+            exit(EXIT_SUCCESS);
         }
     }
 }

@@ -1,122 +1,153 @@
+#include "functions.h"
 #include <iostream>
-#include <cstdlib>
-#include <unistd.h>
 #include <fcntl.h>
-#include "funcs.hpp"
 #include <thread>
 
-#define SEND_TO_SERVER(FD) send_message_to_server(FD, login, command, data)
+inline void intro() {
+    std::cout << "\t\t\tHello! Welcome to the game \"Bulls and cows\"." << std::endl;
+    std::cout << "Have you already account in this game?\n Answer: \"yes\" or \"no\"" << std::endl;
+    std::cout << "> ";
+    std::cout.flush();
+}
 
-//функция приёма сообщений (для потока)
-void func(int fd_respond, std::string &login) {
-    while (true) {
-        std::string respond = recieve_message_client(fd_respond);
-        std::cout << "\n" << respond << "\n";
-        std::cout.flush();
-        if (respond == "SERVER CLOSED")
-            exit(0);
-        std::cout << login << "> ";
+void func(int fd,const std::string& login){
+    while (true){
+        std::string respond = receive(fd);
+        std::cout << "\n" << respond << std::endl;
+        if (respond == "SERVER CLOSED"){
+            exit(EXIT_SUCCESS);
+        }
+        std::cout << login << ">";
         std::cout.flush();
     }
 }
 
-inline void write_intro() {
-    std::cout
-            << "Добро пожаловать в игру Быки и Коровы.\nЧтобы создать аккаунт запустите ./server и введите там свой логи\n";
-    std::cout << "Затем перезапустите клиент и впишите свой логин\n";
-    std::cout << "Введите свой логин: ";
+std::pair<std::string, std::string> login() {
+    std::string login, password;
+    std::cout << "Please enter your login:\n> ";
     std::cout.flush();
+    std::cin >> login;
+    std::cout << "Please enter your password:\n> ";
+    std::cout.flush();
+    std::cin >> password;
+    return std::make_pair(login, SECRET_KEY + password);
 }
 
-inline void write_menu(std::string &login) {
-    std::cout << "Соединение установлено, можете отдавать команды\n";
-    std::cout << "Список команд:\n";
-    std::cout << "1) create @название игрового стола@ @игровое слово@\n";
-    std::cout << "2) connect @название игры@\n";
-    std::cout << "3) leave\n";
-    if (login != "admin")std::cout << "4) quit\n";
-    if (login == "admin") std::cout << "5) shut_down - выключение сервера\n";
-    std::cout.flush();
-}
 
-inline int server_main_input_fd() {
-
-    int fd = open("main_input", O_RDWR);
+int connect_to_server() {
+    int fd = open(SERVER_INPUT_FILE_NAME, O_RDWR);
     if (fd == -1) {
-        std::cout << "ERROR: MAIN FIFO WAS NOT OPENED\n";
-        exit(1);
+        std::cout << "Server doesn't exists" << std::endl;
+        exit(EXIT_FAILURE);
     }
     return fd;
 }
 
-int main() {
-    int client_main_out_fd = server_main_input_fd();
+void menu() {
+    std::cout << "\t\t Main menu" << std::endl;
+    std::cout << "\t List of commands" << std::endl;
+    std::cout << "1) rules" << std::endl;
+    std::cout << "2) create $table_name $game_word" << std::endl;
+    std::cout << "3) connect $table_name" << std::endl;
+    std::cout << "4) quit" << std::endl;
+}
 
-    write_intro();
-    std::string login;
-    std::cin >> login;
-    send_message_to_server(client_main_out_fd, login, "login", "");
-    std::cout << "Устанавливаю соединение\n";
-    sleep(1);
-    int fd_respond = open(login.c_str(), O_RDWR);
-    if (fd_respond == -1) {
-        std::cout << "RESPOND FIFO WAS NOT OPENED";
-        exit(1);
+void loading() {
+    std::cout << "\t\tLoading" << std::endl;
+    int width = 50;
+    int progress = 0;
+    while (progress <= 100) {
+        int now = progress / 2;
+        std::cout << "[";
+        for (int i = 0; i < width; ++i) {
+            if (i < now) { std::cout << "="; }
+            else if (i == now) { std::cout << ">"; }
+            else { std::cout << " "; }
+        }
+        std::cout << "] " << progress << "%" << std::endl;
+        progress += 4;
+        usleep(50000);
     }
+}
 
-    write_menu(login);
-    std::thread thr_respond(func, fd_respond, login);
+void rules() {
+    std::cout << "\t\tRules" << std::endl;
+    std::cout << "1) One word is made up" << std::endl;
+    std::cout << "2) Players try to guess the word" << std::endl;
+    std::cout << "3) The server gives response like \"N bulls, M cows\"." << std::endl;
+    std::cout << "4) Server's response means N chars are in the answer and are in their place" << std::endl;
+    std::cout << "5) M chars are in the answer, but aren't in their place" << std::endl;
+}
 
-    std::string command, data;
-    std::string game_word, game_name;
+int main() {
+    int client_out_fd = connect_to_server();
+    intro();
+    std::string answer;
+    std::cin >> answer;
+    bool ok = (answer == "yes");
+    auto pair = login();
+    std::string password = std::to_string(transform(pair).second);
+    std::string login = pair.first;
+    pair.second = ""; // "security"
+    std::string cmd;
+    ok ? cmd = "log" : cmd = "reg";
+    send_to_server(client_out_fd, login, cmd, password);
+    std::cout << "Connecting to server" << std::endl;
+    loading();
+    int fd = open(pair.first.c_str(), O_RDWR);
+    if (fd == -1) {
+        perror("Open file");
+        exit(EXIT_FAILURE);
+    }
+    menu();
+    std::string command, data, game, game_word;
     int game_fd;
-
+    std::thread thread(func, fd, login);
     while (true) {
-        std::cout << login << "> ";
+        std::cout << "> ";
+        std::cout.flush();
         std::cin >> command;
-
-        if (command == "create") {
-            std::cin >> game_name >> game_word;
-            data = game_name + "$" + game_word;
-            SEND_TO_SERVER(client_main_out_fd);
+        if (command == "rules") {
+            rules();
+        } else if (command == "create") {
+            std::cin >> game >> game_word;
+            data = game + "%" + game_word;
+            send_to_server(client_out_fd, login, command, data);
         } else if (command == "connect") {
-            std::cin >> game_name;
-            game_fd = open(("game_%" + game_name).c_str(), O_RDWR);
+            std::cin >> game;
+            data = game;
+            loading();
+            game_fd = open(("game_" + game).c_str(), O_RDWR);
             if (game_fd == -1) {
-                std::cout << "ERROR: GAME NOT FOUND\n";
-                std::cout.flush();
-            } else {
-                data = "";
-                SEND_TO_SERVER(game_fd);
-                std::cout << login << "> ";
-                std::cout.flush();
-                while (true) {
-                    std::cin >> command;
-
-                    if (command == "maybe") {
-                        std::cin >> data;
-                        SEND_TO_SERVER(game_fd);
-                    } else if (command == "leave") {
-                        data = "";
-                        SEND_TO_SERVER(game_fd);
-                        break;
-                    } else {
-                        std::cout << login << "> ";
-                        std::cout.flush();
-                    }
-                }
+                perror("Open file");
+                exit(EXIT_FAILURE);
             }
-        } else if (command == "quit" && login != "admin") {
+            send_to_server(game_fd, login, command, data);
+            while (true) {
+                std::cin >> command;
+                if (command == "maybe"){
+                    std::cin >> data;
+                    send_to_server(game_fd, login, command, data);
+                } else if (command == "leave"){
+                    send_to_server(game_fd, login, command, data);
+                    break;
+                }
+                std::cout << "> ";
+                std::cout.flush();
+            }
+            menu();
+        } else if (command == "quit") {
             data = "";
-            SEND_TO_SERVER(client_main_out_fd);
-            thr_respond.detach();
-            return 0;
-        } else if (command == "shut_down" && login == "admin") {
+            send_to_server(client_out_fd, login, command, data);
+            thread.detach();
+            std::cout << "Thank you for game. Come to us later" << std::endl;
+            exit(EXIT_SUCCESS);
+        } else if (command == "shut_down" and login == ADMIN_NAME){
             data = "";
-            SEND_TO_SERVER(client_main_out_fd);
-            thr_respond.detach();
-            return 0;
+            send_to_server(client_out_fd, login, command, data);
+            thread.detach();
+            std::cout << "Server will be turned off" << std::endl;
+            exit(EXIT_SUCCESS);
         }
     }
-    return 0;
 }
