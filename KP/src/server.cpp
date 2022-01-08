@@ -163,6 +163,12 @@ void game_func(const std::string &game_name, const std::string &game_word) {
             game_respond =
                     "Welcome to the game " + game_name + "\n" + "Make your guesses with the command \"maybe $word\"";
             send_to_client(players_fd[login], game_respond);
+            game_respond = login + " connected to the game";
+            for (const auto &it: players_fd) {
+                if (it.first != login){
+                    send_to_client(it.second, game_respond);
+                }
+            }
         } else if (cmd == "maybe") {
             game_status = check(game_word, data, cows, bulls);
             if (game_status == -1) {
