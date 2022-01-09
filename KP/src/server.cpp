@@ -159,7 +159,7 @@ void game_func(const std::string &game_name, const std::string &game_word) {
         receive_from_client(fd, &login, &cmd, &data);
         if (cmd == "connect") {
             players_fd[login] = open(login.c_str(), O_RDWR);
-            std::cout << "CLIENT " << login << " JOINED THE GAME " << game_name << std::endl;
+            std::cout << "CLIENT " << login << " JOINED THE TABLE " << game_name << std::endl;
             game_respond =
                     "Welcome to the game " + game_name + "\n" + "Make your guesses with the command \"maybe $word\"";
             send_to_client(players_fd[login], game_respond);
